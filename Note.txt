@@ -1,0 +1,26 @@
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+										Machine Language
+- A 16-bit machine consist of:
+ + Data memory (RAM): a sequence of 16-bit registers: RAM[0], RAM[1], RAM[2]...
+ + Instruction memory (ROM): a sequence of 16-bit registers: RAM[0], RAM[1], RAM[2]...
+ + Center processing unit (CPU): perfoms 16-bit instructions
+ + Instruction bus/ data bus/ address buses
+ 
+- Data bus connects CPU and data memory
+- Instruction bus that moves instructions from Instruction memory to the CPU
+- Buses are kind of like highways of 16 lanes moving chunks of 16 bits from one place to another.
+- Hack machine language:
+	We decided create two categories:
+		+ 16-bit A-instructions
+		+ 16-bit C-instructions
+- Hack program = sequence of instructions written in the Hack machine language.
+- Hack machine language recognizes three registers:
+	+ D holds a 16-bit value which represents a piece of data.
+	+ A holds a 16-bit value which represents either a data value or an address.
+	+ M - memory register represents 16-bit RAM register address by A.
+	
+- C-instruction answers 3 questions:
+	+ what to compute
+	+ where to computed value
+	+ what to do next
