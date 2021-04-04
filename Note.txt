@@ -24,3 +24,8 @@
 	+ what to compute
 	+ where to computed value
 	+ what to do next
+	
+- Computer always running, there are always many processes running in the background even we don't touch the keyboard
+- After run all symbols in assembly code, our program is still running, what if after the last ram assembly call, in a downstream has malicious code.
+- The best practice to terminate a program safely, end it with an infinite loop. Ex: let's end the program like: @6
+																												 0;JMP
