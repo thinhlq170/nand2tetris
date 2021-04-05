@@ -35,3 +35,15 @@
 - Typical pointer semantics: "set the address register to the contents of some memory register"
 
 - Each row is 16 bit * 32 in 512 pixel SCREEN, that's why if we want to go to next row we must jump into offset of 32 (base address + 32)
+
+- Fill: a program does some basics I/O effect. Implement strategy
+	+ Listen to the keyboard
+	+ To blacken / clear screen, write code that fills the entire screen memory map with either "white" or "black" pixels
+	+ Addressing the memory requires working with pointers
+
+- Technical tips:
+	+ Start with pseudo code
+	+ Use symbolic variables and labels
+	+ Variables: lower-case
+	+ Labels: upper-case
+	+ Use indentation
