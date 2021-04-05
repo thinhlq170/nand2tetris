@@ -29,3 +29,9 @@
 - After run all symbols in assembly code, our program is still running, what if after the last ram assembly call, in a downstream has malicious code.
 - The best practice to terminate a program safely, end it with an infinite loop. Ex: let's end the program like: @6
 																												 0;JMP
+																												 
+- Variables that store memory address are called pointer
+- Hack pointer logic: whenever we have to access memory using a pointer, we need an instruction A=M (A equals somthing)
+- Typical pointer semantics: "set the address register to the contents of some memory register"
+
+- Each row is 16 bit * 32 in 512 pixel SCREEN, that's why if we want to go to next row we must jump into offset of 32 (base address + 32)
