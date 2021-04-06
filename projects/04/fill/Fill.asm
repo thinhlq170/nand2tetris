@@ -16,8 +16,6 @@
 (START)
 	@i
 	M=0 // i = 0
-	@j
-	M=0 // j = 0
 	@SCREEN
 	D=A
 	@addrS
@@ -30,47 +28,40 @@
 (KBDCHECK)
 	@KBD
 	D=M
-	@FILL
+	@BLACK
 	D;JGT // if KBD is true goto FILL
-	@CLEAR
+	@WHITE
 	D;JEQ // if KBD is false goto CLEAR
 	@KBDCHECK
+	0;JMP
+	
+(BLACK)
+	@R0
+	M=-1
+	@FILL
+	0;JMP
+	
+(WHITE)
+	@R0
+	M=0
+	@FILL
 	0;JMP
 	
 (FILL)
 	@i
 	D=M
-	@256 // screen width
+	@8192 // full screen
 	D=D-A
 	@START
-	D;JGT
+	D;JEQ
+	@R0
+	D=M
 	@addrS
 	A=M
-	M=-1 // RAM[addrS] = -1
+	M=D // fill
 	@i
 	M=M+1 // i = i + 1
-	@32
-	D=A
 	@addrS
-	M=M+D // addrS = addrS + 32
-	@FILL
-	0;JMP
-	
-(CLEAR)
-	@j
-	D=M
-	@256 // screen width
-	D=D-A
-	@START
-	D;JGT
-	@addrS
-	A=M
-	M=0 // RAM[addrS] = 0
-	@j
-	M=M+1 // j = j + 1
-	@32
-	D=A
-	@addrS
-	M=M+D // addrS = addrS + 32 go next row backward
+	M=M+1 // addrS = addrS + 1
 	@CLEAR
 	0;JMP
