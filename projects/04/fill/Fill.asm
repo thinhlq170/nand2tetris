@@ -29,21 +29,21 @@
 	@KBD
 	D=M
 	@BLACK
-	D;JGT // if KBD is true goto FILL
+	D;JGT // if KBD is true goto BLACK
 	@WHITE
-	D;JEQ // if KBD is false goto CLEAR
+	D;JEQ // if KBD is false goto WHITE
 	@KBDCHECK
 	0;JMP
 	
 (BLACK)
 	@R0
-	M=-1
+	M=-1 //set bit fill, black
 	@FILL
 	0;JMP
 	
 (WHITE)
 	@R0
-	M=0
+	M=0 //set bit fill, white
 	@FILL
 	0;JMP
 	
@@ -63,5 +63,5 @@
 	M=M+1 // i = i + 1
 	@addrS
 	M=M+1 // addrS = addrS + 1
-	@CLEAR
+	@FILL
 	0;JMP

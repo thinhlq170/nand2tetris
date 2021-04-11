@@ -47,3 +47,42 @@
 	+ Variables: lower-case
 	+ Labels: upper-case
 	+ Use indentation
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+													Computer Architecture
+	
+- CPU handling of a c-instruction:
+the instruction bits are decoded into:
+	+ Op-code
+	+ ALU control bits
+	+ Destination load bits
+	+ Jump bits
+	
+- CPU handling of an A-instruction:
+	+ Decodes the instruction into op-code + 15-bit value
+	+ Stores the value in the A-register
+	+ Outputs the value
+	
+- ALU data output:
+	+ Result of ALU calculation, fed simultaneously to: D-register, A-register, M-register
+	+ Which register actually received the incoming value is determined by the instruction's destination bits
+	
+- PC (program counter) emits the address of the next instruction.
+- To start/restart the program's execution: PC = 0 ->  it will execute the fisrt instruction in the program.
+	+ No jump: PC++ (jump bits: 000)
+	+ Unconditional jump: PC = A (jump bits: 111)
+	+ Conditional goto: if the condition is true PC = A else PC++.
+	
+- PC logic:
+	if(reset==1)PC=0
+	else
+		//current instruction
+		load = f(jump bits, ALU control outputs)
+		if(load==1)PC=A
+		else 		PC++
+		
+
+- Hack abstraction:
+	+ Address 0 to 16383: data memory
+	+ Address 16384 to 24575: screen memory map
+	+ Address 24576: keyboard memory map
