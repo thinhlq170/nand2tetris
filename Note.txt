@@ -86,3 +86,12 @@ the instruction bits are decoded into:
 	+ Address 0 to 16383: data memory
 	+ Address 16384 to 24575: screen memory map
 	+ Address 24576: keyboard memory map
+
+- Assembler logic:
+	REPEAT
+	+ Read the next Assembly Language command
+	+ Break it into the different fields it is composed of
+	+ Lookup the binary code for each field
+	+ Combine these codes into a single machine language command
+	+ Output this machine language command
+	UNTIL end-of-file REACHED
