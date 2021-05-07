@@ -95,3 +95,9 @@ the instruction bits are decoded into:
 	+ Combine these codes into a single machine language command
 	+ Output this machine language command
 	UNTIL end-of-file REACHED
+
+- Handling symbols:
+	+ If a variable appears in the program for the first time, then you allocate it to a memory address, starting from address 16 onward.
+	+ If you see this value poping up later in the program, you simply lookup the value that you assigned to it before and then what remains is an @decimal value instruction, which we already know how
+	to handle.
+	
