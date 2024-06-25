@@ -14,7 +14,10 @@ class Parser:
         try:
             with open(filePath, 'r') as file_stream:
                 for line in file_stream:
-                    self.lines.append(line.strip())
+                    line = line.strip()
+                    # if the line is a comment then skip the line
+                    if not line.startswith('//'):
+                        self.lines.append(line.strip())
         except FileNotFoundError:
             print(f"Error: The file {filePath} was not found.")
         except IOError:
@@ -25,7 +28,7 @@ class Parser:
         Are there more commands in the input?
         """
         nextOffset = self.currentOffset + 1
-        return nextOffset < len(self.lines) and not self.lines[nextOffset].startswith("//")
+        return nextOffset < len(self.lines)
         
     
     def advance(self):
@@ -47,13 +50,13 @@ class Parser:
         2. C_COMMAND for dest=comp;jump
         3. L_COMMAND (actually, pseudocommand) for (Xxx) where Xxx is a symbol.
         """
-        commandPattern = "(.*)\/\/"
+        commandPattern = r'(?://)?.*$'
         
         command = re.search(commandPattern, self.currentCommand)
         if command:
             commandPatternA = "^@.*"
             commandPatternC = ".*=.*;.*"
-            commandPatternL = "\(.*\)"
+            commandPatternL = "\(.*\).*"
             
             if re.match(commandPatternA, command):
                 self.commandType = CommandType.A_COMMAND
@@ -61,25 +64,37 @@ class Parser:
                 self.commandType = CommandType.C_COMMAND
             elif re.match(commandPatternL, command):
                 self.commandType = CommandType.L_COMMAND
-            
         
-        
-    
     def symbol(self) -> str:
         """
         Returns: 
         str: Returns the symbol or decimal Xxx of the current command @Xxx or (Xxx). 
         Should be called only when commandType() is A_COMMAND or L_COMMAND.
         """
-        pass
+        if self.currentCommand != "":
+            if self.commandType == CommandType.A_COMMAND:
+                commandPatternA = r'^@(.*)(?://)?.*$'
+                match = re.search(commandPatternA, self.currentCommand)
+                if match:
+                    return match.group(1)
+            elif self.commandType == CommandType.L_COMMAND:
+                commandPatternL = "^\(.*\).*"
+                match = re.search(commandPatternL, self.currentCommand)
+                if match:
+                    return match.group(1)
     
     def dest(self) -> str:
         """
+        C_COMMAND for dest=comp;jump
         Returns:
             str: Returns the dest mnemonic in the current C-command (8 possibilities). 
             Should be called only when commandType() is C_COMMAND.
         """
-        pass
+        if self.commandType == CommandType.C_COMMAND:
+            commandPatternC = r'(.*)\s*=\s*(.*)\s*;\s*(.*)$'
+            match = re.search(commandPatternC, self.currentCommand)
+            if match:
+                return match.group(1)
     
     def comp(self) -> str:
         """
@@ -87,7 +102,11 @@ class Parser:
             str:  Returns the comp mnemonic in the current C-command (28 possibilities). 
             Should be called only when commandType() is C_COMMAND.
         """
-        pass
+        if self.commandType == CommandType.C_COMMAND:
+            commandPatternC = r'(.*)\s*=\s*(.*)\s*;\s*(.*)$'
+            match = re.search(commandPatternC, self.currentCommand)
+            if match:
+                return match.group(2)
     
     def jump(self) -> str:
         """
@@ -95,7 +114,11 @@ class Parser:
             str: Returns the jump mnemonic in the current C-command (8 possibilities). 
             Should be called only when commandType() is C_COMMAND.
         """
-        pass
+        if self.commandType == CommandType.C_COMMAND:
+            commandPatternC = r'(.*)\s*=\s*(.*)\s*;\s*(.*)$'
+            match = re.search(commandPatternC, self.currentCommand)
+            if match:
+                return match.group(3)
     
 
 
