@@ -1,4 +1,5 @@
 import re
+import os
 from enum import Enum
 
 class Parser:
@@ -11,37 +12,49 @@ class Parser:
     def __init__(self, filePath):
         self.code = Code()
         self.symbolTable = SymbolTable()
-        self.commandType = None
         self.currentOffset = 0
         self.currentCommand = None
         self.lines = []
         self.result = []
         self.currentLine = 0
+        self.currentVarAddress = 16
         try:
             with open(filePath, 'r') as file_stream:
                 for line in file_stream:
                     line = line.strip()
                     # if the line is a comment then skip the line
-                    if not line.startswith('//'):
+                    if not line.startswith('//') and len(line) > 0:
                         self.lines.append(line)
         except FileNotFoundError:
             print(f"Error: The file {filePath} was not found.")
         except IOError:
             print(f"Error: Could not read the file {filePath}")
             
-        self.pass1(self)
-        self.pass2(self)
+        self.pass1()
+        self.pass2()
+
+        self.exportFile(filePath)
+
+    def exportFile(self, filePath):
+        dirName = os.path.dirname(filePath)
+        f = open(dirName + "/out.hack", 'w')
+        for command in self.result:
+            f.write(command)
+            f.write("\n")
+
+        f.close()
             
     def pass1(self):
         while (self.hasMoreCommand()):
+            self.advance()
             if (self.commandType() == CommandType.A_COMMAND) or (self.commandType() == CommandType.C_COMMAND):
                 self.currentLine += 1
             
+            # add all label to the symbol table in PASS1
             if self.commandType() == CommandType.L_COMMAND:
                 table = self.symbolTable
                 symbol = self.symbol(self)
                 table.addEntry(symbol, self.currentLine + 1)
-            self.advance()
         
         # reset current offset to the first point in the assembly file after completing pass1    
         self.currentOffset = 0    
@@ -49,7 +62,6 @@ class Parser:
     def pass2(self):
         while (self.hasMoreCommand()):
             if self.commandType() == CommandType.C_COMMAND:
-                self.currentLine += 1
                 code = self.code
                 dest = self.dest()
                 comp = self.comp()
@@ -60,9 +72,25 @@ class Parser:
                 binJump = code.jump(jump)
                 binCommand = f'{commandPrefix}{binComp}{binDest}{binJump}'
                 self.result.append(binCommand)
-            elif self.commandType == CommandType.A_COMMAND:
+                self.currentLine += 1
+            elif self.commandType() == CommandType.A_COMMAND:
                 # TODO: complete pass2 for A_COMMAND
-                pass
+                # if the command is @xxx, look-up xxx in sym-table
+                # if the xxx is found in the table, replace it with its numeric value
+                # if the xxx is not found in the table
+                #   1. add an entry <xxx, value> to the table, value is the next available RAM space
+                #       designated for variable
+                #   2. complete the instruction's translation, using this address
+                table = self.symbolTable
+                addr = table.getAddress(self.currentCommand)
+                if addr:
+                    # label is found
+                    self.currentOffset = addr
+                else: 
+                    # variable is found
+                    table.addEntry(self.currentCommand, self.currentVarAddress)
+                    self.currentVarAddress += 1
+                
             self.advance()
 
     def hasMoreCommand(self) -> bool:
@@ -79,7 +107,7 @@ class Parser:
         Should be called only if hasMoreCommands() is true. 
         Initially there is no current command.
         """
-        if self.hasMoreCommand(self):
+        if self.hasMoreCommand():
             self.currentOffset += 1
             self.currentCommand = self.lines[self.currentOffset]
             return self.currentCommand
@@ -100,12 +128,14 @@ class Parser:
             commandPatternC = ".*=?.*;?.*"
             commandPatternL = "\(.*\).*"
             
-            if re.match(commandPatternA, command):
+            if re.search(commandPatternA, self.currentCommand):
                 return CommandType.A_COMMAND
-            elif re.match(commandPatternC, command):
+            elif re.search(commandPatternC, self.currentCommand):
                 return CommandType.C_COMMAND
-            elif re.match(commandPatternL, command):
+            elif re.search(commandPatternL, self.currentCommand):
                 return CommandType.L_COMMAND
+            
+        return CommandType.OTHER
         
     def symbol(self) -> str:
         """
@@ -114,12 +144,12 @@ class Parser:
         Should be called only when commandType() is A_COMMAND or L_COMMAND.
         """
         if self.currentCommand != "":
-            if self.commandType == CommandType.A_COMMAND:
+            if self.commandType() == CommandType.A_COMMAND:
                 commandPatternA = r'^@(.*)(?://)?.*$'
                 match = re.search(commandPatternA, self.currentCommand)
                 if match:
                     return match.group(1)
-            elif self.commandType == CommandType.L_COMMAND:
+            elif self.commandType() == CommandType.L_COMMAND:
                 commandPatternL = r'^\(.*\).*'
                 match = re.search(commandPatternL, self.currentCommand)
                 if match:
@@ -132,7 +162,7 @@ class Parser:
             str: Returns the dest mnemonic in the current C-command (8 possibilities). 
             Should be called only when commandType() is C_COMMAND.
         """
-        if self.commandType == CommandType.C_COMMAND:
+        if self.commandType() == CommandType.C_COMMAND:
             commandPatternC = r'(.*)\s*=.*;?.*$'
             match = re.search(commandPatternC, self.currentCommand)
             if match:
@@ -144,11 +174,12 @@ class Parser:
             str:  Returns the comp mnemonic in the current C-command (28 possibilities). 
             Should be called only when commandType() is C_COMMAND.
         """
-        if self.commandType == CommandType.C_COMMAND:
-            commandPatternC = r'.*=?\s*(.*)\s*;?.*$'
-            match = re.search(commandPatternC, self.currentCommand)
+        if self.commandType() == CommandType.C_COMMAND:
+            commandPatternCDest = r'.*=\s*(.*)$'
+            commandPatternCJmp = r'(.*)\s*;$'
+            match = re.findall((commandPatternCDest+'|'+commandPatternCJmp), self.currentCommand)
             if match:
-                return match.group(1)
+                return match[0][0]
     
     def jump(self) -> str:
         """
@@ -156,7 +187,7 @@ class Parser:
             str: Returns the jump mnemonic in the current C-command (8 possibilities). 
             Should be called only when commandType() is C_COMMAND.
         """
-        if self.commandType == CommandType.C_COMMAND:
+        if self.commandType() == CommandType.C_COMMAND:
             commandPatternC = r'.*=?.*;\s*(.*)$'
             match = re.search(commandPatternC, self.currentCommand)
             if match:
@@ -168,7 +199,7 @@ class Code:
     """
     A Code module that provides the binary codes of all the assembly mnemonics.
     """
-    def dest(mnemonic: str):
+    def dest(self, mnemonic: str):
         """
         Returns the binary code of the dest mnemonic. (3 bits)
         """
@@ -195,7 +226,7 @@ class Code:
             print("Exception occured: Invalid 'dest' Command")
             
     
-    def comp(mnemonic: str):
+    def comp(self, mnemonic: str):
         """
         Returns the binary code of the comp mnemonic. (7 bits)
         """
@@ -261,7 +292,7 @@ class Code:
         except InvalidCommandException:
             print("Exception occured: Invalid 'comp' Command")
     
-    def jump(mnemonic: str):
+    def jump(self, mnemonic: str):
         """
         Returns the binary code of the jump mnemonic. (3 bits)
         """
@@ -334,6 +365,7 @@ class CommandType(Enum):
     A_COMMAND = 1
     C_COMMAND = 2
     L_COMMAND = 3
+    OTHER = 4
     
 class InvalidCommandException(Exception):
     "The command is not supported!"

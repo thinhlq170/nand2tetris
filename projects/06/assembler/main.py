@@ -6,7 +6,7 @@ def main():
     parser.add_argument('--path', required=True, help="path of the assembly file.")
     
     args = parser.parse_args()
-    hackParser = Parser(args.path)
+    Parser(args.path)
     
     
 
