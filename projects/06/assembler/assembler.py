@@ -45,8 +45,9 @@ class Parser:
         f.close()
             
     def pass1(self):
+        # PASS1 shall not generate any binary code
         while (self.hasMoreCommand()):
-            self.advance()
+            self.currentCommand = self.lines[self.currentOffset]
             if (self.commandType() == CommandType.A_COMMAND) or (self.commandType() == CommandType.C_COMMAND):
                 self.currentLine += 1
             
@@ -55,12 +56,16 @@ class Parser:
                 table = self.symbolTable
                 symbol = self.symbol(self)
                 table.addEntry(symbol, self.currentLine + 1)
+            else:
+                pass
+            self.advance()
         
         # reset current offset to the first point in the assembly file after completing pass1    
-        self.currentOffset = 0    
+        self.resetCommand()
     
     def pass2(self):
-        while (self.hasMoreCommand()):
+        while (self.commandType() == CommandType.C_COMMAND 
+               or self.commandType() == CommandType.A_COMMAND):
             if self.commandType() == CommandType.C_COMMAND:
                 code = self.code
                 dest = self.dest()
@@ -72,7 +77,6 @@ class Parser:
                 binJump = code.jump(jump)
                 binCommand = f'{commandPrefix}{binComp}{binDest}{binJump}'
                 self.result.append(binCommand)
-                self.currentLine += 1
             elif self.commandType() == CommandType.A_COMMAND:
                 # TODO: complete pass2 for A_COMMAND
                 # if the command is @xxx, look-up xxx in sym-table
@@ -87,11 +91,29 @@ class Parser:
                     # label is found
                     self.currentOffset = addr
                 else: 
-                    # variable is found
-                    table.addEntry(self.currentCommand, self.currentVarAddress)
-                    self.currentVarAddress += 1
+                    symbol = self.symbol()
+                    if symbol.isnumeric():
+                        # a constant is found
+                        constant = self.to16Binary(symbol)
+                        self.result.append(constant)
+                    else:
+                        # variable is found
+                        self.currentVarAddress += 1
+                        table.addEntry(self.currentCommand, self.currentVarAddress)
+            self.currentLine += 1
+            if (self.hasMoreCommand()):
+                self.advance()
+            else:
+                break
+
                 
-            self.advance()
+    def resetCommand(self):
+        self.currentOffset = 0
+        self.currentCommand = self.lines[self.currentOffset]
+
+    def to16Binary(self, constText:str):
+        number = int(constText)
+        return "{0:016b}".format(number)
 
     def hasMoreCommand(self) -> bool:
         """
