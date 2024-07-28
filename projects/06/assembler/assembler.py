@@ -54,7 +54,7 @@ class Parser:
             # add all label to the symbol table in PASS1
             if self.commandType() == CommandType.L_COMMAND:
                 table = self.symbolTable
-                symbol = self.symbol(self)
+                symbol = self.symbol()
                 table.addEntry(symbol, self.currentLine + 1)
             else:
                 pass
@@ -67,6 +67,7 @@ class Parser:
         while (self.commandType() == CommandType.C_COMMAND 
                or self.commandType() == CommandType.A_COMMAND):
             if self.commandType() == CommandType.C_COMMAND:
+                self.currentCommand = self.removeCommentInCommand(self.currentCommand)
                 code = self.code
                 dest = self.dest()
                 comp = self.comp()
@@ -86,10 +87,14 @@ class Parser:
                 #       designated for variable
                 #   2. complete the instruction's translation, using this address
                 table = self.symbolTable
-                addr = table.getAddress(self.currentCommand)
-                if addr:
+                symbol = self.symbol()
+                addr = table.getAddress(symbol)
+                if addr is not None:
                     # label is found
-                    self.currentOffset = addr
+                    #self.currentOffset = addr
+                    # a constant is found
+                    constant = self.to16Binary(addr)
+                    self.result.append(constant)
                 else: 
                     symbol = self.symbol()
                     if symbol.isnumeric():
@@ -148,11 +153,16 @@ class Parser:
         if command:
             commandPatternA = "^@.*"
             commandPatternC = ".*=?.*;?.*"
-            commandPatternL = "\(.*\).*"
+            commandPatternL = r'\(.*\).*'
+            
+            commandPatternCDest = r'.*=\s*(.*)$'
+            commandPatternCJmp = r'(.*)\s*;.*$'
+            matchJmp = re.search(commandPatternCJmp, self.currentCommand)
+            matchDest = re.search(commandPatternCDest, self.currentCommand)
             
             if re.search(commandPatternA, self.currentCommand):
                 return CommandType.A_COMMAND
-            elif re.search(commandPatternC, self.currentCommand):
+            elif matchJmp or matchDest:
                 return CommandType.C_COMMAND
             elif re.search(commandPatternL, self.currentCommand):
                 return CommandType.L_COMMAND
@@ -172,10 +182,10 @@ class Parser:
                 if match:
                     return match.group(1)
             elif self.commandType() == CommandType.L_COMMAND:
-                commandPatternL = r'^\(.*\).*'
+                commandPatternL = r'^\((.*\)).*'
                 match = re.search(commandPatternL, self.currentCommand)
                 if match:
-                    return match.group(1)
+                    return match.group(0)
     
     def dest(self) -> str:
         """
@@ -198,10 +208,13 @@ class Parser:
         """
         if self.commandType() == CommandType.C_COMMAND:
             commandPatternCDest = r'.*=\s*(.*)$'
-            commandPatternCJmp = r'(.*)\s*;$'
-            match = re.findall((commandPatternCDest+'|'+commandPatternCJmp), self.currentCommand)
-            if match:
-                return match[0][0]
+            commandPatternCJmp = r'(.*)\s*;.*$'
+            matchJmp = re.search(commandPatternCJmp, self.currentCommand)
+            matchDest = re.search(commandPatternCDest, self.currentCommand)
+            if matchJmp:
+                return matchJmp.group(1)
+            if matchDest:
+                return matchDest.group(1)
     
     def jump(self) -> str:
         """
@@ -214,6 +227,9 @@ class Parser:
             match = re.search(commandPatternC, self.currentCommand)
             if match:
                 return match.group(1)
+            
+    def removeCommentInCommand(self, command: str):
+        return command.split("//")[0].strip()
     
 
 
