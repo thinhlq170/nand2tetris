@@ -36,6 +36,8 @@ class Parser:
         self.exportFile(filePath)
 
     def exportFile(self, filePath):
+        # output file shall be in the same directory with input file
+        # and have default filename is out.hack
         dirName = os.path.dirname(filePath)
         f = open(dirName + "/out.hack", 'w')
         for command in self.result:
@@ -55,7 +57,7 @@ class Parser:
             if self.commandType() == CommandType.L_COMMAND:
                 table = self.symbolTable
                 symbol = self.symbol()
-                table.addEntry(symbol, self.currentLine + 1)
+                table.addEntry(symbol, self.currentLine)
             else:
                 pass
             self.advance()
@@ -64,8 +66,7 @@ class Parser:
         self.resetCommand()
     
     def pass2(self):
-        while (self.commandType() == CommandType.C_COMMAND 
-               or self.commandType() == CommandType.A_COMMAND):
+        while (True):
             if self.commandType() == CommandType.C_COMMAND:
                 self.currentCommand = self.removeCommentInCommand(self.currentCommand)
                 code = self.code
@@ -103,8 +104,10 @@ class Parser:
                         self.result.append(constant)
                     else:
                         # variable is found
+                        table.addEntry(symbol, self.currentVarAddress)
+                        constant = self.to16Binary(self.currentVarAddress)
+                        self.result.append(constant)
                         self.currentVarAddress += 1
-                        table.addEntry(self.currentCommand, self.currentVarAddress)
             self.currentLine += 1
             if (self.hasMoreCommand()):
                 self.advance()
@@ -152,7 +155,6 @@ class Parser:
         command = re.search(commandPattern, self.currentCommand)
         if command:
             commandPatternA = "^@.*"
-            commandPatternC = ".*=?.*;?.*"
             commandPatternL = r'\(.*\).*'
             
             commandPatternCDest = r'.*=\s*(.*)$'
@@ -182,10 +184,10 @@ class Parser:
                 if match:
                     return match.group(1)
             elif self.commandType() == CommandType.L_COMMAND:
-                commandPatternL = r'^\((.*\)).*'
+                commandPatternL = r'^\((.*)\).*'
                 match = re.search(commandPatternL, self.currentCommand)
                 if match:
-                    return match.group(0)
+                    return match.group(1)
     
     def dest(self) -> str:
         """
