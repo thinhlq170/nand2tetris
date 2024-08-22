@@ -1,23 +1,64 @@
 from command_type import CommandType
 import re
+import os
+from command import Command
+from code_writer import CodeWriter
 
 class Parser:
 
     total_lines = []
+    
 
     def __init__(self, file_path) -> None:
         try:
             with open(file_path, 'r') as file:
+                self.line_pointer = -1
+                self.current_command = None
+                self.total_commands: list[Command] = []
+
                 self.total_lines = [line.strip() for line in file.readlines() 
                                     if line.strip() and not line.strip().startswith(r'//')]
+                while (True):
+                    if (self.hasMoreLines()):
+                        self.advance()
+                        cur_command = self.current_command
+                        command_type = self.commandType()
+                        arg1: str = ''
+                        arg2: int = -1
+                        if command_type == CommandType.C_PUSH \
+                            or command_type == CommandType.C_POP:
+                            arg1 = self.arg1()
+                            arg2 = self.arg2()
+                        elif command_type == CommandType.C_ARITHMETIC:
+                            arg1 = self.arg1()
+                        
+                        self.total_commands.append(Command(command_type, arg1, arg2))
+                    else:
+                        break
 
-            self.line_pointer = 0
-            self.current_command = None
+
+            dir_path = os.path.dirname(file_path)
+            output_path = dir_path + r'/out.asm'
+            writer = CodeWriter()
+            with open(output_path, 'w') as file:
+                stack_pointer = writer.initialize_SP()
+                file.write(stack_pointer)
+                for command in self.total_commands:
+                    code_gen = ''
+                    if command.command_type == CommandType.C_ARITHMETIC:
+                        code_gen = writer.writeArithmetic(arg1)
+                    else:
+                        code_gen = writer.writePushPop(command.command_type, command.arg1, command.arg2)
+                    file.write(code_gen)
+                
+                file.write(writer.end())
+
+            
         except FileNotFoundError:
             print("Error: The file does not exist.")
 
     def hasMoreLines(self):
-        if self.total_lines[self.line_pointer + 1]:
+        if self.line_pointer + 1 < len(self.total_lines):
             return True
         return False
 
@@ -72,10 +113,10 @@ class Parser:
         """
         arg = ''
         cur_command = self.current_command
-        if self.commandType(cur_command) == CommandType.C_ARITHMETIC:
+        if self.commandType() == CommandType.C_ARITHMETIC:
             arg = cur_command
-        elif self.commandType(cur_command) == CommandType.C_POP \
-            or self.commandType(cur_command) == CommandType.C_PUSH:
+        elif self.commandType() == CommandType.C_POP \
+            or self.commandType() == CommandType.C_PUSH:
 
             arg = cur_command.split(' ')[1]
         return arg
@@ -90,8 +131,8 @@ class Parser:
         """
         cur_command = self.current_command
         arg = -1
-        if self.commandType(cur_command) == CommandType.C_POP \
-            or self.commandType(cur_command) == CommandType.C_PUSH:
+        if self.commandType() == CommandType.C_POP \
+            or self.commandType() == CommandType.C_PUSH:
 
             arg = int(cur_command.split(' ')[2])
         return arg
