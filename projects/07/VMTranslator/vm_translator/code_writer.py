@@ -10,9 +10,15 @@ class CodeWriter:
 
 
     def writeArithmetic(self, command: str):
-        if command == 'add':
-            return self.add()
+        code_gen = StringIO()
+        match command:
+            case 'add':
+                code_gen.write(self.add())
+            case 'eq':
+                code_gen.write(self.equal())
 
+        return code_gen.getvalue()
+    
     def writePushPop(self, command: CommandType, segment: str, index: int):
         code_gen = StringIO()
         base = ''
@@ -129,6 +135,22 @@ class CodeWriter:
         code_gen.write('M=M+1')
         code_gen.write('\n')
         return code_gen.getvalue()
+    
+    def push_bool(self, boolean: bool) -> str:
+        code_gen = StringIO()
+        code_gen.write('@SP')
+        code_gen.write('\n')   
+        code_gen.write('A=M')
+        code_gen.write('\n')
+        if boolean:
+            code_gen.write('M=-1')
+        else:
+            code_gen.write('M=0')
+        code_gen.write('\n')    
+        code_gen.write('@SP')    
+        code_gen.write('\n')    
+        code_gen.write('M=M+1')
+        return code_gen.getvalue()
 
     def pop(self) -> str:
         code_gen = StringIO()
@@ -144,6 +166,25 @@ class CodeWriter:
 
         return code_gen.getvalue()
     
+    
+    
+    def pop_2_ops(self) -> str:
+        code_gen = StringIO()
+
+        code_gen.write('// adding operation')
+        code_gen.write('\n')  
+        code_gen.write('// poping operand 1\n')  
+        code_gen.write(self.pop())
+        code_gen.write('// poping operand 2\n')
+        code_gen.write('@SP')
+        code_gen.write('\n')   
+        code_gen.write('M=M-1')
+        code_gen.write('\n')    
+        code_gen.write('A=M')
+        return code_gen.getvalue()
+    
+    # -------------------------- arithmetic implementation --------------------------
+
     def add(self) -> str:
         code_gen = StringIO()
 
@@ -158,9 +199,47 @@ class CodeWriter:
         code_gen.write('\n')    
         code_gen.write('A=M')
         code_gen.write('\n')    
-        code_gen.write('D=M+D') #addition
+        code_gen.write('D=D+M') #addition
         code_gen.write('\n')
         code_gen.write(self.push())
+
+        return code_gen.getvalue()
+
+    def sub(self) -> str:
+        code_gen = StringIO()
+        code_gen.write(self.pop_2_ops())
+        code_gen.write('\n')
+        code_gen.write('D=D-M')
+        code_gen.write('\n')
+        code_gen.write(self.push())
+
+        return code_gen.getvalue()
+
+    def equal(self) -> str:
+        code_gen = StringIO()
+
+        code_gen.write('// Check equality\n')
+
+        code_gen.write(self.pop_2_ops())
+        code_gen.write('\n')
+        code_gen.write('D=D-M')
+        code_gen.write('\n')
+        code_gen.write('@TRUE')
+        code_gen.write('\n')
+        code_gen.write('D;JEQ')
+        code_gen.write('\n')
+        code_gen.write(self.push_bool(False))
+        code_gen.write('\n')
+        code_gen.write('@SKIP')
+        code_gen.write('\n')
+        code_gen.write('0;JMP')
+        code_gen.write('\n')
+        code_gen.write('(TRUE)')
+        code_gen.write('\n')
+        code_gen.write(self.push_bool(True))
+        code_gen.write('\n')
+        code_gen.write('(SKIP)')
+        code_gen.write('\n')
 
         return code_gen.getvalue()
     
