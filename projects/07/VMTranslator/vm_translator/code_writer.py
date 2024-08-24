@@ -9,13 +9,29 @@ class CodeWriter:
         pass
 
 
-    def writeArithmetic(self, command: str):
+    def writeArithmetic(self, command: str, index):
         code_gen = StringIO()
-        match command:
-            case 'add':
-                code_gen.write(self.add())
-            case 'eq':
-                code_gen.write(self.equal())
+        equality_op = command == 'eq' \
+            or command == 'lt' \
+            or command == 'gt'
+        
+        logical_2_op = command == 'and' or command == 'or'
+        is_1_op = command == 'not' or command == 'neg'
+
+        if is_1_op:
+            code_gen.write(self.gen_one_op(command))
+
+        if logical_2_op:
+            code_gen.write(self.gen_logical_2_ops(command))
+        
+        if equality_op:
+            code_gen.write(self.gen_equality(command, index))
+
+        if command == 'add':
+            code_gen.write(self.gen_add())
+        elif command == 'sub':
+            code_gen.write(self.gen_sub())
+
 
         return code_gen.getvalue()
     
@@ -46,7 +62,7 @@ class CodeWriter:
     def close(self):
         pass
 
-    def pop(self, base: str, index: int) -> str:
+    def pop_memory(self, base: str, index: int) -> str:
         idx: str = str(index)
         code_gen = StringIO()
         code_gen.write(r'// pop ' + base + r' ' + idx)
@@ -87,7 +103,7 @@ class CodeWriter:
         code_gen.write('\n')
         code_gen.write('D=M')
         code_gen.write('\n')
-        code_gen.write(self.push())
+        code_gen.write(self.push('M=D'))
         
         code_gen.write(r'// push ' + base + r' ' + idx)
 
@@ -102,7 +118,7 @@ class CodeWriter:
         code_gen.write('\n')    
         code_gen.write('D=A')
         code_gen.write('\n')    
-        code_gen.write(self.push())
+        code_gen.write(self.push('M=D'))
         return code_gen.getvalue()
           
 
@@ -122,13 +138,13 @@ class CodeWriter:
         code_gen.write('\n')
         return code_gen.getvalue()
 
-    def push(self) -> str:
+    def push(self, target_instruction: str) -> str:
         code_gen = StringIO()
         code_gen.write('@SP')
         code_gen.write('\n')   
         code_gen.write('A=M')
         code_gen.write('\n')    
-        code_gen.write('M=D')
+        code_gen.write(target_instruction)
         code_gen.write('\n')    
         code_gen.write('@SP')    
         code_gen.write('\n')    
@@ -138,18 +154,12 @@ class CodeWriter:
     
     def push_bool(self, boolean: bool) -> str:
         code_gen = StringIO()
-        code_gen.write('@SP')
-        code_gen.write('\n')   
-        code_gen.write('A=M')
-        code_gen.write('\n')
+
         if boolean:
-            code_gen.write('M=-1')
+            code_gen.write(self.push('M=-1'))
         else:
-            code_gen.write('M=0')
-        code_gen.write('\n')    
-        code_gen.write('@SP')    
-        code_gen.write('\n')    
-        code_gen.write('M=M+1')
+            code_gen.write(self.push('M=0'))
+
         return code_gen.getvalue()
 
     def pop(self) -> str:
@@ -158,6 +168,8 @@ class CodeWriter:
         code_gen.write('@SP')
         code_gen.write('\n')   
         code_gen.write('M=M-1') # <=> AM=M-1
+        code_gen.write('\n')
+        code_gen.write('@SP')    
         code_gen.write('\n')    
         code_gen.write('A=M')
         code_gen.write('\n')    
@@ -171,21 +183,21 @@ class CodeWriter:
     def pop_2_ops(self) -> str:
         code_gen = StringIO()
 
-        code_gen.write('// adding operation')
-        code_gen.write('\n')  
         code_gen.write('// poping operand 1\n')  
         code_gen.write(self.pop())
         code_gen.write('// poping operand 2\n')
         code_gen.write('@SP')
         code_gen.write('\n')   
         code_gen.write('M=M-1')
+        code_gen.write('\n')
+        code_gen.write('@SP')
         code_gen.write('\n')    
         code_gen.write('A=M')
         return code_gen.getvalue()
     
     # -------------------------- arithmetic implementation --------------------------
 
-    def add(self) -> str:
+    def gen_add(self) -> str:
         code_gen = StringIO()
 
         code_gen.write('// adding operation')
@@ -196,52 +208,113 @@ class CodeWriter:
         code_gen.write('@SP')
         code_gen.write('\n')   
         code_gen.write('M=M-1')
+        code_gen.write('\n')
+        code_gen.write('@SP')
         code_gen.write('\n')    
         code_gen.write('A=M')
         code_gen.write('\n')    
         code_gen.write('D=D+M') #addition
         code_gen.write('\n')
-        code_gen.write(self.push())
+        code_gen.write(self.push('M=D'))
 
         return code_gen.getvalue()
 
-    def sub(self) -> str:
+    def gen_sub(self) -> str:
         code_gen = StringIO()
         code_gen.write(self.pop_2_ops())
         code_gen.write('\n')
-        code_gen.write('D=D-M')
+        code_gen.write('D=M-D')
         code_gen.write('\n')
-        code_gen.write(self.push())
+        code_gen.write(self.push('M=D'))
 
         return code_gen.getvalue()
 
-    def equal(self) -> str:
+    def gen_equality(self, operation: str, index) -> str:
+        '''
+            This function generates equality instructions.
+            argument index (code line) is required because of marking
+            for TRUE/FALSE jumping label.
+        '''
         code_gen = StringIO()
 
-        code_gen.write('// Check equality\n')
+        target_instruction = 'UNDEFINED_OPERATION'
+        if operation == 'eq':
+            target_instruction = 'D;JEQ'
+            code_gen.write('// generate eq\n')
+        elif operation == 'lt':
+            target_instruction = 'D;JLT'
+            code_gen.write('// generate lt\n')
+        elif operation == 'gt':
+            target_instruction = 'D;JGT'
+            code_gen.write('// generate gt\n')
 
         code_gen.write(self.pop_2_ops())
         code_gen.write('\n')
-        code_gen.write('D=D-M')
+        code_gen.write('D=M-D')
         code_gen.write('\n')
-        code_gen.write('@TRUE')
+        code_gen.write('@TRUE' + str(index))
         code_gen.write('\n')
-        code_gen.write('D;JEQ')
+        code_gen.write(target_instruction)
         code_gen.write('\n')
         code_gen.write(self.push_bool(False))
-        code_gen.write('\n')
-        code_gen.write('@SKIP')
+        code_gen.write('@SKIP' + str(index))
         code_gen.write('\n')
         code_gen.write('0;JMP')
         code_gen.write('\n')
-        code_gen.write('(TRUE)')
+        code_gen.write('(TRUE' + str(index) + ')')
         code_gen.write('\n')
         code_gen.write(self.push_bool(True))
-        code_gen.write('\n')
-        code_gen.write('(SKIP)')
+        code_gen.write('(SKIP' + str(index) + ')')
         code_gen.write('\n')
 
         return code_gen.getvalue()
+    
+    def gen_one_op(self, operation: str) -> str:
+        '''
+            This function generates asm code for one operand arithmetic such as
+            not, negation.
+            Default generation is for negation
+        '''
+        code_gen = StringIO()
+
+        target_instruction = 'UNDEFINED_OPERATION'
+        if operation == 'not':
+            code_gen.write('// proceed NOT operation\n')
+            target_instruction = 'M=!D'
+        else:
+            code_gen.write('// proceed negation\n')
+            target_instruction = 'M=-D'
+
+        
+        code_gen.write(self.pop())
+        code_gen.write(self.push(target_instruction))
+
+        return code_gen.getvalue()
+    
+    def gen_logical_2_ops(self, operation: str) -> str:
+        '''
+            This function generates asm code for logical operation with 2 operands
+            such as AND, OR.
+        '''
+        code_gen = StringIO()
+
+        target_instruction = 'UNDEFINED_OPERATION'
+        if operation == 'and':
+            code_gen.write('// Proceed AND\n')
+            target_instruction = 'D=D&M'
+        elif operation == 'or':
+            code_gen.write('// Proceed OR\n')
+            target_instruction = 'D=D|M'
+        
+        code_gen.write(self.pop_2_ops())
+        code_gen.write('\n')
+        code_gen.write(target_instruction)
+        code_gen.write('\n')
+
+        code_gen.write(self.push('M=D'))
+
+        return code_gen.getvalue()
+        
     
     def end(self) -> str:
         code_gen = StringIO()

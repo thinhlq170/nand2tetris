@@ -43,10 +43,10 @@ class Parser:
             with open(output_path, 'w') as file:
                 stack_pointer = writer.initialize_SP()
                 file.write(stack_pointer)
-                for command in self.total_commands:
+                for index, command in enumerate(self.total_commands):
                     code_gen = ''
                     if command.command_type == CommandType.C_ARITHMETIC:
-                        code_gen = writer.writeArithmetic(arg1)
+                        code_gen = writer.writeArithmetic(command.arg1, index)
                     else:
                         code_gen = writer.writePushPop(command.command_type, command.arg1, command.arg2)
                     file.write(code_gen)
