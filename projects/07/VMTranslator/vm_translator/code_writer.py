@@ -43,12 +43,14 @@ class CodeWriter:
                     base = 'LCL'
                 case 'argument':
                     base = 'ARG'
-                case 'this' | 'pointer':
+                case 'this':
                     base = 'THIS'
                 case 'that':
                     base = 'THAT'
                 case 'temp':
                     base = 'TEMP'
+                case 'pointer':
+                    base = 'POINTER'
         if command == CommandType.C_POP:
             code_gen.write(self.pop_memory(base, index))
         elif command == CommandType.C_PUSH:
@@ -77,11 +79,24 @@ class CodeWriter:
             
             code_gen.write('\n')
             code_gen.write(self.pop())
-            code_gen.write('\n')
             code_gen.write('@' + base)
             code_gen.write('\n')
             code_gen.write('M=D')
             code_gen.write('\n')
+        elif base == 'POINTER':
+            code_gen.write(r'// pop pointer ' + idx)
+            seg_base = 'THIS'
+            if index == 1:
+                seg_base = 'THAT'
+            
+            code_gen.write('\n')
+            code_gen.write(self.pop())
+            code_gen.write('\n')
+            code_gen.write('@' + seg_base)
+            code_gen.write('\n')
+            code_gen.write('M=D')
+            code_gen.write('\n')
+                
         else:
             code_gen.write(r'// pop ' + base + r' ' + idx)
             code_gen.write('\n')
@@ -139,6 +154,18 @@ class CodeWriter:
             
             code_gen.write('\n')
             code_gen.write('@' + base) # base address value is stored in RAM[base]
+            code_gen.write('\n')
+            code_gen.write('D=M')
+            code_gen.write('\n')
+            code_gen.write(self.push('M=D'))
+        elif base == 'POINTER':
+            code_gen.write(r'// push pointer ' + idx)
+            seg_base = 'THIS'
+            if index == 1:
+                seg_base = 'THAT'
+            
+            code_gen.write('\n')
+            code_gen.write('@' + seg_base)
             code_gen.write('\n')
             code_gen.write('D=M')
             code_gen.write('\n')
