@@ -21,7 +21,6 @@ class Parser:
                 while (True):
                     if (self.hasMoreLines()):
                         self.advance()
-                        cur_command = self.current_command
                         command_type = self.commandType()
                         arg1: str = ''
                         arg2: int = -1
@@ -38,7 +37,8 @@ class Parser:
 
 
             dir_path = os.path.dirname(file_path)
-            output_path = dir_path + r'/out.asm'
+            file_name = os.path.splitext(os.path.basename(file_path))[0] + r'.asm'
+            output_path = os.path.join(dir_path, file_name)
             writer = CodeWriter()
             with open(output_path, 'w') as file:
                 stack_pointer = writer.initialize_SP()

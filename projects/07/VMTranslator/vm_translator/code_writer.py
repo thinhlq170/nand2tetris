@@ -50,7 +50,7 @@ class CodeWriter:
                 case 'temp':
                     base = 'TEMP'
         if command == CommandType.C_POP:
-            code_gen.write(self.pop(base, index))
+            code_gen.write(self.pop_memory(base, index))
         elif command == CommandType.C_PUSH:
             if segment == 'constant':
                 code_gen.write(self.push_constant(index))
@@ -63,23 +63,64 @@ class CodeWriter:
         pass
 
     def pop_memory(self, base: str, index: int) -> str:
+        
+        
         idx: str = str(index)
         code_gen = StringIO()
-        code_gen.write(r'// pop ' + base + r' ' + idx)
         
-        code_gen.write(r'// assign new address is "base" plus ' + idx + ' ' + r'to R13 as a temporary')
-        code_gen.write('@' + idx)
-        code_gen.write('D=A')
-        code_gen.write('@' + base) # base address value is stored in RAM[base]
-        code_gen.write('D=D+M')
-        code_gen.write('@R13')
-        code_gen.write('M=D')
-
-        code_gen.write(r'// pop the stack and assign the value to the new address')
-        code_gen.write(self.pop())
-        code_gen.write('@R13')
-        code_gen.write('A=M')
-        code_gen.write('M=D')
+        if base == 'TEMP':
+            '''
+                access to temp + i shall be translated into asm code that access to RAM location 5 + i
+            '''
+            code_gen.write(r'// pop temp ' + idx)
+            base = str(5 + index)
+            
+            code_gen.write('\n')
+            code_gen.write(self.pop())
+            code_gen.write('\n')
+            code_gen.write('@' + base)
+            code_gen.write('\n')
+            code_gen.write('M=D')
+            code_gen.write('\n')
+        else:
+            code_gen.write(r'// pop ' + base + r' ' + idx)
+            code_gen.write('\n')
+            code_gen.write('@' + idx)
+            code_gen.write('\n')
+            code_gen.write('D=A')
+            code_gen.write('\n')
+            code_gen.write('@' + base) # base address value is stored in RAM[base]
+            code_gen.write('\n')
+            code_gen.write('A=M')
+            code_gen.write('\n')
+            code_gen.write('D=D+A')
+            code_gen.write('\n')
+            code_gen.write('@' + base)
+            code_gen.write('\n')
+            code_gen.write('M=D')
+            code_gen.write('\n')
+            code_gen.write(self.pop())
+            code_gen.write('@' + base)
+            code_gen.write('\n')
+            code_gen.write('A=M')
+            code_gen.write('\n')
+            code_gen.write('M=D')
+            code_gen.write('\n')
+            code_gen.write('@' + idx)
+            code_gen.write('\n')
+            code_gen.write('D=A')
+            code_gen.write('\n')
+            code_gen.write('@' + base)
+            code_gen.write('\n')
+            code_gen.write('A=M')
+            code_gen.write('\n')
+            code_gen.write('D=A-D')
+            code_gen.write('\n')
+            code_gen.write('@' + base)
+            code_gen.write('\n')
+            code_gen.write('M=D')
+            code_gen.write('\n')
+        
 
 
         return code_gen.getvalue()
@@ -88,25 +129,42 @@ class CodeWriter:
     def push_memmory(self, base: str, index: int) -> str:
         idx: str = str(index)
         code_gen = StringIO()
-
-        code_gen.write(r'// push ' + base + ' ' + idx)
-        code_gen.write('\n')
-        code_gen.write('@' + idx)
-        code_gen.write('\n')
-        code_gen.write('D=A')
-        code_gen.write('\n')
-        code_gen.write('@' + base) # base address value is stored in RAM[base]
-        code_gen.write('\n')
-        code_gen.write('D=D+M')
-        code_gen.write('\n')
-        code_gen.write('A=D')
-        code_gen.write('\n')
-        code_gen.write('D=M')
-        code_gen.write('\n')
-        code_gen.write(self.push('M=D'))
         
-        code_gen.write(r'// push ' + base + r' ' + idx)
+        if base == 'TEMP':
+            '''
+                access to temp + i shall be translated into asm code that access to RAM location 5 + i
+            '''
+            code_gen.write(r'// push temp ' + idx)
+            base = str(5 + index)
+            
+            code_gen.write('\n')
+            code_gen.write('@' + base) # base address value is stored in RAM[base]
+            code_gen.write('\n')
+            code_gen.write('D=M')
+            code_gen.write('\n')
+            code_gen.write(self.push('M=D'))
+        else:
+            code_gen.write(r'// push ' + base + r' ' + idx)
+            code_gen.write('\n')
+            code_gen.write('@' + idx)
+            code_gen.write('\n')
+            code_gen.write('D=A')
+            code_gen.write('\n')
+            code_gen.write('@' + base) # base address value is stored in RAM[base]
+            code_gen.write('\n')
+            code_gen.write('A=M')
+            code_gen.write('\n')
+            code_gen.write('D=D+A')
+            code_gen.write('\n')
+            code_gen.write('A=D')
+            code_gen.write('\n')
+            code_gen.write('D=M')
+            code_gen.write('\n')
+            code_gen.write(self.push('M=D'))
+            code_gen.write('\n')
 
+        
+        
         return code_gen.getvalue()
 
     def push_constant(self, index: int) -> str:
@@ -167,9 +225,7 @@ class CodeWriter:
 
         code_gen.write('@SP')
         code_gen.write('\n')   
-        code_gen.write('M=M-1') # <=> AM=M-1
-        code_gen.write('\n')
-        code_gen.write('@SP')    
+        code_gen.write('M=M-1') # <=> AM=M-1    
         code_gen.write('\n')    
         code_gen.write('A=M')
         code_gen.write('\n')    
@@ -200,32 +256,71 @@ class CodeWriter:
     def gen_add(self) -> str:
         code_gen = StringIO()
 
-        code_gen.write('// adding operation')
+        code_gen.write('// add')
         code_gen.write('\n')  
-        code_gen.write('// poping operand 1\n')  
-        code_gen.write(self.pop())
-        code_gen.write('// poping operand 2\n')
         code_gen.write('@SP')
         code_gen.write('\n')   
-        code_gen.write('M=M-1')
+        code_gen.write('A=M')   
+        code_gen.write('\n')   
+        code_gen.write('A=A-1')
         code_gen.write('\n')
-        code_gen.write('@SP')
+        code_gen.write('A=A-1')
         code_gen.write('\n')    
-        code_gen.write('A=M')
+        code_gen.write('D=M')
         code_gen.write('\n')    
+        code_gen.write('A=A+1') 
+        code_gen.write('\n')
         code_gen.write('D=D+M') #addition
         code_gen.write('\n')
-        code_gen.write(self.push('M=D'))
+        code_gen.write('@SP')
+        code_gen.write('\n')
+        code_gen.write('M=M-1')
+        code_gen.write('\n')
+        code_gen.write('M=M-1')
+        code_gen.write('\n')
+        code_gen.write('A=M')
+        code_gen.write('\n')
+        code_gen.write('M=D')
+        code_gen.write('\n')
+        code_gen.write('@SP')
+        code_gen.write('\n')
+        code_gen.write('M=M+1')
+        code_gen.write('\n')
 
         return code_gen.getvalue()
 
     def gen_sub(self) -> str:
         code_gen = StringIO()
-        code_gen.write(self.pop_2_ops())
+        code_gen.write('// sub')
         code_gen.write('\n')
-        code_gen.write('D=M-D')
+        code_gen.write('@SP')
         code_gen.write('\n')
-        code_gen.write(self.push('M=D'))
+        code_gen.write('A=M')
+        code_gen.write('\n')
+        code_gen.write('A=A-1')
+        code_gen.write('\n')
+        code_gen.write('A=A-1')
+        code_gen.write('\n')
+        code_gen.write('D=M')
+        code_gen.write('\n')
+        code_gen.write('A=A+1')
+        code_gen.write('\n')
+        code_gen.write('D=D-M')
+        code_gen.write('\n')
+        code_gen.write('@SP')
+        code_gen.write('\n')
+        code_gen.write('M=M-1')
+        code_gen.write('\n')
+        code_gen.write('M=M-1')
+        code_gen.write('\n')
+        code_gen.write('A=M')
+        code_gen.write('\n')
+        code_gen.write('M=D')
+        code_gen.write('\n')
+        code_gen.write('@SP')
+        code_gen.write('\n')
+        code_gen.write('M=M+1')
+        code_gen.write('\n')
 
         return code_gen.getvalue()
 
